@@ -1,116 +1,73 @@
-## Flask + MongoDB Dockerized
+# hep-case: Flask + MongoDB Uygulamasının AWS EKS Üzerinde CI/CD ile Dağıtımı
 
-# Folder Structure
-.
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── src/
-│   ├── app.py
-│   ├── config.py
-│   ├── db_config.json
-│   ├── models/
-│   └── factory/
+Bu proje, Flask ve MongoDB kullanarak geliştirilmiş bir web uygulamasının AWS EKS (Elastic Kubernetes Service) ortamında Helm ile MongoDB kurulumu, Kubernetes manifest dosyaları, ve GitHub Actions CI/CD pipeline'ları ile tam entegrasyonunu kapsar.
 
-# Dockerfile and Docker Compose
+# Mimari Bileşenler
 
--- For the Flask app served from **src/app.py**, I wrote a simple Dockerfile where I copied the whole **src/** folder to **/app/** and asked it to broadcast on port 5005.
+Flask: Python tabanlı web uygulaması
+MongoDB: Helm chart ile kurulmuş, EBS destekli kalıcı veritabanı
+AWS EKS: Kubernetes cluster barındıran managed ortam
+Helm: MongoDB deployment'larını paketleyip yönetmek için
+GitHub Actions: CI/CD süreçlerini otomatikleştirme
 
--- I wrote a **docker-compose.yml** file to run the Flask app and the MongoDB service together.
+# Helm ile MongoDB Kurulumu
 
--- To be able to access the Flask application over the internet, I edited the **app.py** file and added the relevant port information.
+Bitnami chart kullanılarak MongoDB kurulum adımları:
 
-`if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5005)`
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
 
--- I updated the MongoDB connection in **config.py** to support both local and container-based development.
+helm install hepdb bitnami/mongodb \
+  --set auth.rootUser=<rootuser> \
+  --set auth.rootPassword=<password> \
+  --set architecture=standalone \
+  --set primary.persistence.storageClass=<default storageClass name> \
+  --set auth.enabled=true
 
-## Run and Control
+Kurulum sonrası EXTERNAL-IP için kubectl get svc ile flask-service servisini kontrol edebilirsiniz.
 
+# CI/CD Pipeline (GitHub Actions)
 
-`docker compose up --build` and `http://localhost:5005/todos/` or `curl http://localhost:5005/todos/`
+.github/workflows/deploy.yaml içeriği şu adımları kapsar:
 
-## Environment Variables
+push tetiklemesi ile pipeline başlar
 
-Variable	                   Purpose	                         Default
-MONGO_URI	           MongoDB connection string	        mongodb://mongo:27017/myDatabase
-MONGO_DB_NAME	       MongoDB database name	                  myDatabase
+Docker image build edilir ve Docker Hub'a push edilir
 
--- These can be modified for other environments with Docker-Compose.yml.
+kubectl apply -f k8s/ ile Flask manifest'leri AWS EKS ortamına deploy edilir
 
-## Local Kubernetes Setup with Minikube
+IAM kullanıcısına ait AWS_ACCESS_KEY_ID ve AWS_SECRET_ACCESS_KEY GitHub repo secrets olarak tanımlanmalıdır.
 
-To simulate a production-like Kubernetes environment locally, a `setup_minikube.sh` script is provided.
+🚀 Deployment Adımları
 
-## Prerequisites
-- Docker
-- Minikube: [Install Guide](https://minikube.sigs.k8s.io/docs/start/)
+EKS Cluster kurulur (eksctl veya Terraform)
 
-## Run the setup
+aws eks update-kubeconfig komutu ile context eklenir
 
-`chmod +x scripts/setup_minikube.sh`
-`./scripts/setup_minikube.sh`
+MongoDB Helm chart ile deploy edilir
 
-## Flask + MongoDB Application - Kubernetes Deployment (Step 4)
+Flask uygulaması kubectl apply -f k8s/ ile yüklenir
 
-This step focuses on deploying a Python-based Flask application with MongoDB on a Kubernetes cluster. The goal was to get the application up and running with internal connectivity and basic access verification.
+CI/CD pipeline tetiklenir
 
-### 1. Docker Image Created
-- Selected an open-source Flask + PyMongo application.
-- Built a custom Docker image using a `Dockerfile` and tested it locally with `docker-compose`.
+# Test Komutları
 
-### 2. Minikube Setup and Cluster Initialization
+ELB adresini öğrenebilirsiniz:
 
-`minikube start`
+  kubectl get svc flask-service
 
-## MongoDB Deployed via Helm
+Verileri listeleyebilirsiniz:
 
-Used Bitnami's official Helm chart:
+  curl http://<elb-url>/todos/
 
-`helm repo add bitnami https://charts.bitnami.com/bitnami
-helm install hep-mongodb bitnami/mongodb \
-  --set auth.rootPassword=hepApipass321 \
-  --set auth.username=mongoadmin \
-  --set auth.database=hepApidb`
+Veri ekleyebilirsiniz:
 
-MongoDB was accessible via:
+  curl -X POST http://<elb-url>/todos/ -d "title=Test Todo&body=Test todo bilgisidir"
 
-`mongodb://mongoadmin:<dbpassword>@<database>-mongodb.default.svc.cluster.local:27017/<dbname>
-`
+Yeniden listeleyebilirsiniz:
 
-## Flask Application Deployed to Kubernetes
+  curl http://<elb-url>/todos/
 
-Used a Kubernetes Deployment with 2 replicas.
+# Katkı ve Geliştirme
 
-Environment variables were passed to the container for MongoDB connectivity:
-
-`env:
-  - name: MONGO_URI
-    value: mongodb://mongoadmin:<dbpassword>@<database>-mongodb.default.svc.cluster.local:27017/<dbname>`
-
-## Service Created (NodePort)
-
-Created a Kubernetes Service to expose the Flask app:
-
-`spec:
-  type: NodePort
-  ports:
-    - port: 80
-      targetPort: 5000
-      nodePort: 30080`
-
-## Testing & Validation
-
-Internally tested the Flask API via service DNS:
-
-`wget http://flask-service.default.svc.cluster.local/todos/`
-
-Attempted external access via:
-
-`curl http://<minikube-ip>:30080/todos/`
-
-Pod logs confirmed successful MongoDB connectivity and HTTP requests.
-
-# CI/CD Pipeline
-
-A
+Bu projede EKS, Helm, MongoDB, CI/CD alanlarında deneyimlerimi pekiştirme fırsatım oldu. Sizlerde bu repoyu forklayarak kendi projenizde kullanabilir ve geliştirmeler yapabilirisiniz.
