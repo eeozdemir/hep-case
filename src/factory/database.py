@@ -7,6 +7,7 @@ from config import config
 
 class Database(object):
     def __init__(self):
+        mongo_uri = config["db"]["url"]
         self.client = MongoClient(config['db']['url'])  # configure db url
         self.db = self.client[config['db']['name']]  # configure db name
 

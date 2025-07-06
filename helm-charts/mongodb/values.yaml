@@ -1,0 +1,45 @@
+replicaCount: 1
+
+image:
+  repository: mongo
+  tag: "6.0"
+  pullPolicy: IfNotPresent
+
+auth:
+  enabled: true
+  username: mongoadmin
+  password: hepApipass321
+  database: hepApidb
+
+service:
+  type: ClusterIP
+  port: 27017
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+persistence:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 2Gi
+  storageClass: "standard"
+
+#livenessProbe:
+ # initialDelaySeconds: 30
+ # periodSeconds: 10
+
+#readinessProbe:
+ # initialDelaySeconds: 10
+ # periodSeconds: 5
+
+livenessProbe:
+  enabled: false
+
+readinessProbe:
+  enabled: false
