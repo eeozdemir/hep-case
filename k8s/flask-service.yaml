@@ -3,9 +3,10 @@ kind: Service
 metadata:
   name: flask-service
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
     app: flask-app
   ports:
     - port: 80
       targetPort: 5000
+

@@ -18,8 +18,8 @@ spec:
         ports:
         - containerPort: 5000
         env:
-        - name: MONGO_URI
-          value: mongodb://mongoadmin:hepApipass321@hep-mongodb-mongodb.default.svc.cluster.local:27017/hepApidb
+          - name: MONGO_URI
+            value: mongodb://mongoadmin:hepApipass321@hepdb-mongodb.default.svc.cluster.local:27017/?authSource=admin
         resources:
           requests:
             memory: "128Mi"
